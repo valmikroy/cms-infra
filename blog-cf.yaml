@@ -50,3 +50,18 @@ Resources:
       WebsiteConfiguration:
         RedirectAllRequestsTo:
           HostName: !Ref RootBucket
+
+# Remove certificate creation from this cloudformation
+#
+#  CertificateManagerCertificate:
+#    Type: AWS::CertificateManager::Certificate
+#    Properties:
+#      DomainName: !Sub '${BlogName}.${DomainName}'
+#      ValidationMethod: DNS
+#
+
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
