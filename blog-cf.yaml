@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: Blog template
+
+
+Parameters:
+  BlogName:
+    Description: Name of the blog 
+    Type: String
+  DomainName:
+    Description: Top level domain name
+    Type: String
+
+    
+Resources:
+  RootBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Sub '${BlogName}.${DomainName}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  RootBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RootBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref RootBucket
+                - /*
+            Principal: '*'
+            Sid: PublicReadGetObject
+
+
+  WWWBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: RootBucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'www.${BlogName}.${DomainName}'
+      WebsiteConfiguration:
+        RedirectAllRequestsTo:
+          HostName: !Ref RootBucket
