@@ -10,6 +10,9 @@ Parameters:
   DomainName:
     Description: Top level domain name
     Type: String
+  CertARN:
+    Description: Certificate ARN
+    Type: String
 
     
 Resources:
@@ -60,8 +63,43 @@ Resources:
 #      ValidationMethod: DNS
 #
 
-
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
+    DependsOn: RootBucket
     Properties:
       DistributionConfig:
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_All
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertARN
+          MinimumProtocolVersion: TLSv1.1_2016
+          SslSupportMethod: sni-only
+        Aliases:
+          - !Sub '${BlogName}.${DomainName}'
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginKeepaliveTimeout: 5
+              OriginProtocolPolicy: 'http-only'
+              OriginReadTimeout: 30
+              OriginSSLProtocols:
+                - TLSv1
+                - TLSv1.1
+                - TLSv1.2
+            DomainName: !GetAtt 'RootBucket.DomainName'
+            Id: !Sub 'S3-${AWS::StackName}-root'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          TargetOriginId: !Sub 'S3-${AWS::StackName}-root' 
+          ViewerProtocolPolicy: 'redirect-to-https'
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: true
