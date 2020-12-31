@@ -20,7 +20,6 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     Properties:
-      AccessControl: PublicRead
       BucketName: !Sub '${BlogName}.${DomainName}'
       WebsiteConfiguration:
         IndexDocument: index.html
@@ -40,20 +39,26 @@ Resources:
               - - 'arn:aws:s3:::'
                 - !Ref RootBucket
                 - /*
-            Principal: '*'
+            Principal: 
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
             Sid: PublicReadGetObject
 
-#
-#  WWWBucket:
-#    Type: AWS::S3::Bucket
-#    DependsOn: RootBucket
-#    DeletionPolicy: Delete
-#    Properties:
-#      BucketName: !Sub 'www.${BlogName}.${DomainName}'
-#      WebsiteConfiguration:
-#        RedirectAllRequestsTo:
-#          HostName: !Ref RootBucket
-#
+  CloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Ref RootBucket
+
+  WWWBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: RootBucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'www.${BlogName}.${DomainName}'
+      WebsiteConfiguration:
+        RedirectAllRequestsTo:
+          HostName: !Ref RootBucket
+
 # Remove certificate creation from this cloudformation
 #
 #  CertificateManagerCertificate:
@@ -78,18 +83,10 @@ Resources:
         Aliases:
           - !Sub '${BlogName}.${DomainName}'
         Origins:
-          - CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginKeepaliveTimeout: 5
-              OriginProtocolPolicy: 'http-only'
-              OriginReadTimeout: 30
-              OriginSSLProtocols:
-                - TLSv1
-                - TLSv1.1
-                - TLSv1.2
-            DomainName: !Sub '${BlogName}.${DomainName}.s3-website-${AWS::Region}.amazonaws.com'
+          - DomainName: !GetAtt 'RootBucket.DomainName'
             Id: !Sub 'S3-${AWS::StackName}-root'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
@@ -104,7 +101,6 @@ Resources:
               Forward: none
             QueryString: true
 
-            
   Route53:
     Type: AWS::Route53::RecordSet
     DependsOn: CloudFrontDistribution
